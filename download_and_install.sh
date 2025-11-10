@@ -17,11 +17,23 @@ if [ ! -d "/data/data/com.termux/files/usr" ]; then
 fi
 
 # 检查参数 (支持通过 -s 传递参数)
-if [ $# -eq 0 ]; then
+PHONE_MODEL=""
+if [ $# -gt 0 ]; then
+    PHONE_MODEL="$1"
+fi
+
+# 如果没有通过参数传递，则尝试从标准输入读取
+if [ -z "$PHONE_MODEL" ]; then
+    # 检查是否有标准输入
+    if [ ! -t 0 ]; then
+        read PHONE_MODEL
+    fi
+fi
+
+# 如果仍然没有手机型号，则提示用户输入
+if [ -z "$PHONE_MODEL" ]; then
     echo "📱 请输入您的手机型号（例如: Pixel_5, Samsung_S21等）:"
     read PHONE_MODEL
-else
-    PHONE_MODEL="$1"
 fi
 
 if [ -z "$PHONE_MODEL" ]; then
@@ -63,8 +75,14 @@ chmod +x install.sh
 
 # 运行安装脚本，传递手机型号参数
 echo "🚀 运行安装脚本..."
-# 使用 bash -s 来传递参数给 install.sh 脚本
-echo "$PHONE_MODEL" | ./install.sh
+# 使用多种方式确保参数能传递给 install.sh 脚本
+if [ ! -t 0 ]; then
+    # 如果有标准输入，通过管道传递
+    echo "$PHONE_MODEL" | ./install.sh
+else
+    # 如果没有标准输入，通过参数传递
+    ./install.sh <<< "$PHONE_MODEL"
+fi
 
 # 清理临时目录
 cd ~
