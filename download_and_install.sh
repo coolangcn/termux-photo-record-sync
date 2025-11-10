@@ -48,9 +48,9 @@ done
 # 添加执行权限
 chmod +x install.sh
 
-# 运行安装脚本
+# 运行安装脚本，保持标准输入连接
 echo "🚀 运行安装脚本..."
-./install.sh
+bash -i ./install.sh
 
 # 清理临时目录
 cd ~
