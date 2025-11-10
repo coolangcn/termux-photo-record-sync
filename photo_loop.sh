@@ -162,7 +162,7 @@ while true; do
 
     # 3. 移动和上传逻辑
 
-    echo "📤 移动照片至 NAS: $(basename "$FILE")" | tee -a "$LOG_FILE"
+    echo "📤 移动照片至 NAS: $UPLOAD_TARGET/$(basename "$FILE")" | tee -a "$LOG_FILE"
 
 
 

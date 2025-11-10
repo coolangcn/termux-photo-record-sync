@@ -187,7 +187,7 @@ while true; do
 
 
 
-    echo "📤 移动所有 .acc 文件至 NAS..." | tee -a "$LOG_FILE"
+    echo "📤 移动所有 .acc 文件至 NAS: $UPLOAD_TARGET/" | tee -a "$LOG_FILE"
 
 
 
@@ -207,7 +207,7 @@ while true; do
 
     else
 
-        echo "❌ 移动失败 (状态码: $RCLONE_STATUS)。本地文件保留。" | tee -a "$LOG_FILE"
+        echo "❌ 移动失败 (状态码: $RCLONE_STATUS)。本地录音文件保留。" | tee -a "$LOG_FILE"
 
         echo "--- Rclone 错误详情 ---" | tee -a "$LOG_FILE"
 
@@ -219,7 +219,9 @@ while true; do
 
 
 
-    # 等待下一次循环开始
+    # 等待 3 秒后，进行下一次录音
+
+    echo "😴 等待 3 秒..." | tee -a "$LOG_FILE"
 
     sleep 3
 
