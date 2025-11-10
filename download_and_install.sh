@@ -16,7 +16,7 @@ if [ ! -d "/data/data/com.termux/files/usr" ]; then
     exit 1
 fi
 
-# 检查参数
+# 检查参数 (支持通过 -s 传递参数)
 if [ $# -eq 0 ]; then
     echo "📱 请输入您的手机型号（例如: Pixel_5, Samsung_S21等）:"
     read PHONE_MODEL
@@ -63,7 +63,8 @@ chmod +x install.sh
 
 # 运行安装脚本，传递手机型号参数
 echo "🚀 运行安装脚本..."
-./install.sh "$PHONE_MODEL"
+# 使用 bash -s 来传递参数给 install.sh 脚本
+echo "$PHONE_MODEL" | ./install.sh
 
 # 清理临时目录
 cd ~
