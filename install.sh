@@ -81,11 +81,21 @@ cp "$(dirname "$0")/record_loop.sh" "$HOME/record_loop.sh" 2>/dev/null || {
     exit 1
 }
 
+# 显示替换前的 UPLOAD_TARGET 值
+echo "🔍 替换前的配置:"
+echo "  照片脚本中的 UPLOAD_TARGET: $(grep 'UPLOAD_TARGET=' "$HOME/photo_loop.sh" | head -n 1)"
+echo "  音频脚本中的 UPLOAD_TARGET: $(grep 'UPLOAD_TARGET=' "$HOME/record_loop.sh" | head -n 1)"
+
 # 更新 photo_loop.sh 中的 UPLOAD_TARGET
 sed -i "s|UPLOAD_TARGET=\"synology:/download/records/Pixel_5_Photos\"|UPLOAD_TARGET=\"synology:/download/records/${PHONE_MODEL}_Photos\"|" "$HOME/photo_loop.sh"
 
 # 更新 record_loop.sh 中的 UPLOAD_TARGET
 sed -i "s|UPLOAD_TARGET=\"synology:/download/records/Pixel_5\"|UPLOAD_TARGET=\"synology:/download/records/${PHONE_MODEL}\"|" "$HOME/record_loop.sh"
+
+# 显示替换后的 UPLOAD_TARGET 值
+echo "🔍 替换后的配置:"
+echo "  照片脚本中的 UPLOAD_TARGET: $(grep 'UPLOAD_TARGET=' "$HOME/photo_loop.sh" | head -n 1)"
+echo "  音频脚本中的 UPLOAD_TARGET: $(grep 'UPLOAD_TARGET=' "$HOME/record_loop.sh" | head -n 1)"
 
 # 添加执行权限
 chmod +x "$HOME/photo_loop.sh"
