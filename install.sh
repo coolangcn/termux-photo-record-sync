@@ -2,7 +2,7 @@
 
 # Termux 照片和录音同步到 NAS 一键部署脚本
 # 作者: coolangcn
-# 版本: 1.0.14
+# 版本: 1.0.16
 # 最后修改时间: 2025-11-10
 
 set -e
@@ -17,14 +17,15 @@ if [ ! -d "/data/data/com.termux/files/usr" ]; then
 fi
 
 # 获取手机型号参数
-if [ $# -eq 0 ]; then
+# 从标准输入读取参数（支持通过 echo "$PHONE_MODEL" | ./install.sh 方式传递）
+read PHONE_MODEL
+
+if [ -z "$PHONE_MODEL" ]; then
     echo "❌ 错误: 请提供手机型号作为参数"
-    echo "💡 用法: $0 <手机型号>"
-    echo "💡 例如: $0 Pixel_5"
+    echo "💡 用法: echo '手机型号' | $0"
+    echo "💡 例如: echo 'Pixel_5' | $0"
     exit 1
 fi
-
-PHONE_MODEL="$1"
 
 # 创建必要的目录
 RECORD_DIR="$HOME/records"
@@ -150,7 +151,7 @@ chmod +x "$HOME/record_loop.sh"
 echo "✅ 照片和录音同步脚本已安装到 $HOME"
 
 # 创建启动脚本
-cat > "$HOME/start_sync.sh" << 'EOF'
+cat > "$HOME/start_sync.sh" << EOF
 #!/data/data/com.termux/files/usr/bin/bash
 
 # 启动照片和录音同步服务
@@ -182,7 +183,7 @@ EOF
 chmod +x "$HOME/start_sync.sh"
 
 # 创建停止脚本
-cat > "$HOME/stop_sync.sh" << 'EOF'
+cat > "$HOME/stop_sync.sh" << EOF
 #!/data/data/com.termux/files/usr/bin/bash
 
 # 停止照片和录音同步服务
@@ -247,7 +248,7 @@ echo "📂 NAS 照片接收目录: synology:/download/records/${PHONE_MODEL}_Pho
 echo "📂 NAS 音频接收目录: synology:/download/records/${PHONE_MODEL}"
 echo ""
 echo "📄 脚本版本信息:"
-echo "  版本号: 1.0.14"
+echo "  版本号: 1.0.16"
 echo "  最后修改时间: 2025-11-10"
 echo ""
 echo "📌 使用说明:"
