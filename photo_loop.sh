@@ -1,13 +1,11 @@
 #!/data/data/com.termux/files/usr/bin/bash
 
 
-
 # ========== 配置区 ==========
 
 RECORD_DIR="$HOME/records"
 
 mkdir -p "$RECORD_DIR"
-
 
 
 UPLOAD_TARGET="synology:/download/records/Pixel_5_Photos" 
@@ -61,13 +59,9 @@ trap 'rm -f "$PID_FILE"; echo "🛑 拍照脚本结束 $(date)" | tee -a "$LOG_F
 # --- 启动信息 ---
 
 echo "📸 定时拍照脚本启动 $(date)" | tee -a "$LOG_FILE"
-
 echo "照片目录：$RECORD_DIR" | tee -a "$LOG_FILE"
-
 echo "压缩质量：${COMPRESSION_QUALITY}%" | tee -a "$LOG_FILE" # 新增日志
-
 echo "上传目标：$UPLOAD_TARGET" | tee -a "$LOG_FILE"
-
 echo "拍照间隔：${INTERVAL_SECONDS}s" | tee -a "$LOG_FILE"
 
 
