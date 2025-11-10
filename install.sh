@@ -15,6 +15,16 @@ if [ ! -d "/data/data/com.termux/files/usr" ]; then
     exit 1
 fi
 
+# 获取手机型号参数
+if [ $# -eq 0 ]; then
+    echo "❌ 错误: 请提供手机型号作为参数"
+    echo "💡 用法: $0 <手机型号>"
+    echo "💡 例如: $0 Pixel_5"
+    exit 1
+fi
+
+PHONE_MODEL="$1"
+
 # 创建必要的目录
 RECORD_DIR="$HOME/records"
 mkdir -p "$RECORD_DIR"
@@ -70,14 +80,6 @@ cp "$(dirname "$0")/record_loop.sh" "$HOME/record_loop.sh" 2>/dev/null || {
     echo "❌ 错误: 无法找到 record_loop.sh，请确保它与 install.sh 在同一目录"
     exit 1
 }
-
-# 询问用户手机型号并更新 UPLOAD_TARGET
-echo "📱 请输入您的手机型号（例如: Pixel_5, Samsung_S21等）:"
-read PHONE_MODEL
-
-if [ -z "$PHONE_MODEL" ]; then
-    PHONE_MODEL="Unknown_Device"
-fi
 
 # 更新 photo_loop.sh 中的 UPLOAD_TARGET
 sed -i "s|UPLOAD_TARGET=\"synology:/download/records/Pixel_5_Photos\"|UPLOAD_TARGET=\"synology:/download/records/${PHONE_MODEL}_Photos\"|" "$HOME/photo_loop.sh"
@@ -180,9 +182,13 @@ else
     echo "   $HOME/start_sync.sh"
 fi
 
-# 显示使用说明
+# 显示使用说明和 NAS 接收目录
 echo ""
 echo "🎉 部署完成！"
+echo ""
+echo "📱 手机型号: $PHONE_MODEL"
+echo "📂 NAS 照片接收目录: synology:/download/records/${PHONE_MODEL}_Photos"
+echo "📂 NAS 音频接收目录: synology:/download/records/${PHONE_MODEL}"
 echo ""
 echo "📌 使用说明:"
 echo "  启动服务: $HOME/start_sync.sh"
@@ -192,8 +198,7 @@ echo "  查看录音日志: tail -f $HOME/record_loop.log"
 echo ""
 echo "📝 注意事项:"
 echo "  1. 请确保已正确配置 rclone 连接到您的 NAS"
-echo "  2. 您可能需要修改脚本中的 UPLOAD_TARGET 配置"
-echo "  3. 如果设置了定时任务，系统重启后服务将自动启动"
+echo "  2. 如果设置了定时任务，系统重启后服务将自动启动"
 echo ""
 echo "🔧 配置文件位置:"
 echo "  照片同步脚本: $HOME/photo_loop.sh"

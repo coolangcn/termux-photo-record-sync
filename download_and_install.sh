@@ -16,6 +16,19 @@ if [ ! -d "/data/data/com.termux/files/usr" ]; then
     exit 1
 fi
 
+# 检查参数
+if [ $# -eq 0 ]; then
+    echo "📱 请输入您的手机型号（例如: Pixel_5, Samsung_S21等）:"
+    read PHONE_MODEL
+else
+    PHONE_MODEL="$1"
+fi
+
+if [ -z "$PHONE_MODEL" ]; then
+    echo "❌ 错误: 手机型号不能为空"
+    exit 1
+fi
+
 # 检查是否安装了 curl
 if ! command -v curl &> /dev/null; then
     echo "📥 安装 curl..."
@@ -48,15 +61,19 @@ done
 # 添加执行权限
 chmod +x install.sh
 
-# 运行安装脚本，保持标准输入连接
+# 运行安装脚本，传递手机型号参数
 echo "🚀 运行安装脚本..."
-bash -i ./install.sh
+./install.sh "$PHONE_MODEL"
 
 # 清理临时目录
 cd ~
 rm -rf "$TEMP_DIR"
 
 echo "✅ 安装完成！"
+echo ""
+echo "📱 手机型号: $PHONE_MODEL"
+echo "📂 NAS 照片接收目录: synology:/download/records/${PHONE_MODEL}_Photos"
+echo "📂 NAS 音频接收目录: synology:/download/records/${PHONE_MODEL}"
 echo ""
 echo "💡 提示: 如果您希望系统重启后自动启动同步服务，请确保已安装 cronie 包:"
 echo "   pkg install cronie"
