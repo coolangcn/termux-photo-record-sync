@@ -8,7 +8,7 @@ RECORD_DIR="$HOME/records"
 mkdir -p "$RECORD_DIR"
 
 
-UPLOAD_TARGET="synology:/download/records/Pixel_5"
+UPLOAD_TARGET=""
 
 DURATION=60  # 录音时长 (秒)
 
@@ -39,6 +39,18 @@ if [ -f "$PID_FILE" ]; then
         rm -f "$PID_FILE"
 
     fi
+
+fi
+
+
+
+# 检查 UPLOAD_TARGET 是否已设置
+
+if [ -z "$UPLOAD_TARGET" ]; then
+
+    echo "❌ 错误: UPLOAD_TARGET 未设置，请通过安装脚本运行此脚本" | tee -a "$LOG_FILE"
+
+    exit 1
 
 fi
 
