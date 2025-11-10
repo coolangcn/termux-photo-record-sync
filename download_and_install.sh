@@ -57,3 +57,9 @@ cd ~
 rm -rf "$TEMP_DIR"
 
 echo "✅ 安装完成！"
+echo ""
+echo "💡 提示: 如果您希望系统重启后自动启动同步服务，请确保已安装 cronie 包:"
+echo "   pkg install cronie"
+echo ""
+echo "📌 您现在可以使用以下命令来启动服务:"
+echo "   ~/start_sync.sh"

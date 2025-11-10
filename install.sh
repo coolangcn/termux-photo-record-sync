@@ -144,15 +144,27 @@ chmod +x "$HOME/stop_sync.sh"
 # 设置定时任务以自动启动脚本
 echo "⏰ 设置定时任务以自动启动脚本..."
 
-# 备份现有的 crontab
-if crontab -l > "$HOME/crontab_backup_$(date +%Y%m%d_%H%M%S)" 2>/dev/null; then
-    echo "📋 已备份现有 crontab 到 $HOME"
+# 检查是否安装了 cronie 包
+if ! command -v crontab &> /dev/null; then
+    echo "⚠️ 未找到 crontab 命令，正在安装 cronie 包..."
+    pkg install -y cronie
 fi
 
-# 创建新的 crontab 条目
-(crontab -l 2>/dev/null; echo "@reboot $HOME/start_sync.sh") | crontab -
+# 再次检查是否安装了 crontab
+if command -v crontab &> /dev/null; then
+    # 备份现有的 crontab
+    if crontab -l > "$HOME/crontab_backup_$(date +%Y%m%d_%H%M%S)" 2>/dev/null; then
+        echo "📋 已备份现有 crontab 到 $HOME"
+    fi
 
-echo "✅ 定时任务已设置，系统重启后将自动启动同步服务"
+    # 创建新的 crontab 条目
+    (crontab -l 2>/dev/null; echo "@reboot $HOME/start_sync.sh") | crontab -
+    echo "✅ 定时任务已设置，系统重启后将自动启动同步服务"
+else
+    echo "❌ 无法安装或找不到 crontab，无法设置定时任务"
+    echo "💡 您可以手动运行以下命令来启动服务:"
+    echo "   $HOME/start_sync.sh"
+fi
 
 # 显示使用说明
 echo ""
@@ -167,7 +179,7 @@ echo ""
 echo "📝 注意事项:"
 echo "  1. 请确保已正确配置 rclone 连接到您的 NAS"
 echo "  2. 您可能需要修改脚本中的 UPLOAD_TARGET 配置"
-echo "  3. 系统重启后服务将自动启动"
+echo "  3. 如果设置了定时任务，系统重启后服务将自动启动"
 echo ""
 echo "🔧 配置文件位置:"
 echo "  照片同步脚本: $HOME/photo_loop.sh"
