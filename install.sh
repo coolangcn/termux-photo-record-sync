@@ -2,7 +2,7 @@
 
 # Termux 照片和录音同步到 NAS 一键部署脚本
 # 作者: coolangcn
-# 版本: 1.0.9
+# 版本: 1.0.10
 # 最后修改时间: 2025-11-10
 
 set -e
@@ -88,10 +88,24 @@ echo "  照片脚本中的 UPLOAD_TARGET: $(grep 'UPLOAD_TARGET=' "$HOME/photo_l
 echo "  音频脚本中的 UPLOAD_TARGET: $(grep 'UPLOAD_TARGET=' "$HOME/record_loop.sh" | head -n 1)"
 
 # 更新 photo_loop.sh 中的 UPLOAD_TARGET
+echo "🔄 更新照片脚本中的 UPLOAD_TARGET..."
 sed -i "s|UPLOAD_TARGET=\"synology:/download/records/Pixel_5_Photos\"|UPLOAD_TARGET=\"synology:/download/records/${PHONE_MODEL}_Photos\"|" "$HOME/photo_loop.sh"
+# 检查 sed 命令是否成功执行
+if [ $? -eq 0 ]; then
+    echo "✅ 照片脚本中的 UPLOAD_TARGET 更新成功"
+else
+    echo "❌ 照片脚本中的 UPLOAD_TARGET 更新失败"
+fi
 
 # 更新 record_loop.sh 中的 UPLOAD_TARGET
+echo "🔄 更新音频脚本中的 UPLOAD_TARGET..."
 sed -i "s|UPLOAD_TARGET=\"synology:/download/records/Pixel_5\"|UPLOAD_TARGET=\"synology:/download/records/${PHONE_MODEL}\"|" "$HOME/record_loop.sh"
+# 检查 sed 命令是否成功执行
+if [ $? -eq 0 ]; then
+    echo "✅ 音频脚本中的 UPLOAD_TARGET 更新成功"
+else
+    echo "❌ 音频脚本中的 UPLOAD_TARGET 更新失败"
+fi
 
 # 显示替换后的 UPLOAD_TARGET 值
 echo "🔍 替换后的配置:"
@@ -202,7 +216,7 @@ echo "📂 NAS 照片接收目录: synology:/download/records/${PHONE_MODEL}_Pho
 echo "📂 NAS 音频接收目录: synology:/download/records/${PHONE_MODEL}"
 echo ""
 echo "📄 脚本版本信息:"
-echo "  版本号: 1.0.9"
+echo "  版本号: 1.0.10"
 echo "  最后修改时间: 2025-11-10"
 echo ""
 echo "📌 使用说明:"
