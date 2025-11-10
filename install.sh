@@ -71,7 +71,7 @@ cp "$(dirname "$0")/record_loop.sh" "$HOME/record_loop.sh" 2>/dev/null || {
     exit 1
 }
 
-// 询问用户手机型号并更新 UPLOAD_TARGET
+# 询问用户手机型号并更新 UPLOAD_TARGET
 echo "📱 请输入您的手机型号（例如: Pixel_5, Samsung_S21等）:"
 read PHONE_MODEL
 
@@ -79,19 +79,19 @@ if [ -z "$PHONE_MODEL" ]; then
     PHONE_MODEL="Unknown_Device"
 fi
 
-// 更新 photo_loop.sh 中的 UPLOAD_TARGET
+# 更新 photo_loop.sh 中的 UPLOAD_TARGET
 sed -i "s|UPLOAD_TARGET=\"synology:/download/records/Pixel_5_Photos\"|UPLOAD_TARGET=\"synology:/download/records/${PHONE_MODEL}_Photos\"|" "$HOME/photo_loop.sh"
 
-// 更新 record_loop.sh 中的 UPLOAD_TARGET
+# 更新 record_loop.sh 中的 UPLOAD_TARGET
 sed -i "s|UPLOAD_TARGET=\"synology:/download/records/Pixel_5\"|UPLOAD_TARGET=\"synology:/download/records/${PHONE_MODEL}\"|" "$HOME/record_loop.sh"
 
-// 添加执行权限
+# 添加执行权限
 chmod +x "$HOME/photo_loop.sh"
 chmod +x "$HOME/record_loop.sh"
 
 echo "✅ 照片和录音同步脚本已安装到 $HOME"
 
-// 创建启动脚本
+# 创建启动脚本
 cat > "$HOME/start_sync.sh" << 'EOF'
 #!/data/data/com.termux/files/usr/bin/bash
 
@@ -123,7 +123,7 @@ EOF
 
 chmod +x "$HOME/start_sync.sh"
 
-// 创建停止脚本
+# 创建停止脚本
 cat > "$HOME/stop_sync.sh" << 'EOF'
 #!/data/data/com.termux/files/usr/bin/bash
 
@@ -155,23 +155,23 @@ EOF
 
 chmod +x "$HOME/stop_sync.sh"
 
-// 设置定时任务以自动启动脚本
+# 设置定时任务以自动启动脚本
 echo "⏰ 设置定时任务以自动启动脚本..."
 
-// 检查是否安装了 cronie 包
+# 检查是否安装了 cronie 包
 if ! command -v crontab &> /dev/null; then
     echo "⚠️ 未找到 crontab 命令，正在安装 cronie 包..."
     pkg install -y cronie
 fi
 
-// 再次检查是否安装了 crontab
+# 再次检查是否安装了 crontab
 if command -v crontab &> /dev/null; then
-    // 备份现有的 crontab
+    # 备份现有的 crontab
     if crontab -l > "$HOME/crontab_backup_$(date +%Y%m%d_%H%M%S)" 2>/dev/null; then
         echo "📋 已备份现有 crontab 到 $HOME"
     fi
 
-    // 创建新的 crontab 条目
+    # 创建新的 crontab 条目
     (crontab -l 2>/dev/null; echo "@reboot $HOME/start_sync.sh") | crontab -
     echo "✅ 定时任务已设置，系统重启后将自动启动同步服务"
 else
@@ -180,7 +180,7 @@ else
     echo "   $HOME/start_sync.sh"
 fi
 
-// 显示使用说明
+# 显示使用说明
 echo ""
 echo "🎉 部署完成！"
 echo ""
