@@ -1,13 +1,11 @@
 #!/data/data/com.termux/files/usr/bin/bash
 
 
-
 # ========== 配置区 ==========
 
 RECORD_DIR="$HOME/records"
 
 mkdir -p "$RECORD_DIR"
-
 
 
 UPLOAD_TARGET="synology:/download/records/Pixel_5"
@@ -77,11 +75,8 @@ fi
 # --- 启动信息 ---
 
 echo "🎙️ 循环录音脚本启动 (Q模式) $(date)" | tee -a "$LOG_FILE"
-
 echo "录音目录：$RECORD_DIR" | tee -a "$LOG_FILE"
-
 echo "上传目标：$UPLOAD_TARGET" | tee -a "$LOG_FILE"
-
 echo "录音时长：${DURATION}s" | tee -a "$LOG_FILE"
 
 
