@@ -2,7 +2,7 @@
 
 # Termux 照片和录音同步到 NAS 一体化脚本
 # 作者: coolangcn
-# 版本: 1.0.20
+# 版本: 1.0.21
 # 最后修改时间: 2025-11-11
 
 # ==================== 配置区 ====================
@@ -91,16 +91,16 @@ stop_services() {
     echo "🛑 停止正在运行的服务..."
     
     # 停止照片同步服务
-    if pgrep -f "photo_loop_function.sh" > /dev/null; then
-        pkill -f "photo_loop_function.sh"
+    if pgrep -f "all_in_one.sh.*photo_loop" > /dev/null; then
+        pkill -f "all_in_one.sh.*photo_loop"
         echo "📸 照片同步服务已停止"
     else
         echo "📸 照片同步服务未运行"
     fi
     
     # 停止录音同步服务
-    if pgrep -f "record_loop_function.sh" > /dev/null; then
-        pkill -f "record_loop_function.sh"
+    if pgrep -f "all_in_one.sh.*record_loop" > /dev/null; then
+        pkill -f "all_in_one.sh.*record_loop"
         echo "🎙️ 录音同步服务已停止"
     else
         echo "🎙️ 录音同步服务未运行"
