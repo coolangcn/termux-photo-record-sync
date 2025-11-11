@@ -2,7 +2,7 @@
 
 # Termux 照片和录音同步到 NAS 一体化脚本
 # 作者: coolangcn
-# 版本: 1.0.21
+# 版本: 1.0.22
 # 最后修改时间: 2025-11-11
 
 # ==================== 配置区 ====================
@@ -98,12 +98,41 @@ stop_services() {
         echo "📸 照片同步服务未运行"
     fi
     
+    if pgrep -f "all_in_one.sh start" > /dev/null; then
+        pkill -f "all_in_one.sh start"
+        echo "📸 照片同步服务 (all_in_one.sh start) 已停止"
+    else
+        echo "📸 照片同步服务 (all_in_one.sh start) 未运行"
+    fi
+    
     # 停止录音同步服务
     if pgrep -f "all_in_one.sh.*record_loop" > /dev/null; then
         pkill -f "all_in_one.sh.*record_loop"
         echo "🎙️ 录音同步服务已停止"
     else
         echo "🎙️ 录音同步服务未运行"
+    fi
+    
+    if pgrep -f "all_in_one.sh start" > /dev/null; then
+        pkill -f "all_in_one.sh start"
+        echo "🎙️ 录音同步服务 (all_in_one.sh start) 已停止"
+    else
+        echo "🎙️ 录音同步服务 (all_in_one.sh start) 未运行"
+    fi
+    
+    # 停止旧的脚本进程
+    if pgrep -f "photo_loop.sh" > /dev/null; then
+        pkill -f "photo_loop.sh"
+        echo "📸 旧照片同步服务已停止"
+    else
+        echo "📸 旧照片同步服务未运行"
+    fi
+    
+    if pgrep -f "record_loop.sh" > /dev/null; then
+        pkill -f "record_loop.sh"
+        echo "🎙️ 旧录音同步服务已停止"
+    else
+        echo "🎙️ 旧录音同步服务未运行"
     fi
     
     # 清理可能残留的录音进程
