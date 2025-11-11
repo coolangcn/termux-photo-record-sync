@@ -13,10 +13,6 @@
 
 ## 文件说明
 
-- `photo_loop.sh`: 照片拍摄和同步脚本
-- `record_loop.sh`: 音频录制和同步脚本
-- `install.sh`: 一键部署安装脚本
-- `download_and_install.sh`: 从 GitHub 下载并安装的脚本
 - `all_in_one.sh`: 一体化脚本（包含所有功能）
 
 ## 部署安装
@@ -26,26 +22,18 @@
 在 Termux 中运行以下命令：
 
 ```bash
-curl -s https://raw.githubusercontent.com/coolangcn/termux-photo-record-sync/main/download_and_install.sh | bash
-```
-
-### 方法二：使用一体化脚本（最简单）
-
-在 Termux 中运行以下命令：
-
-```bash
 curl -s https://raw.githubusercontent.com/coolangcn/termux-photo-record-sync/main/all_in_one.sh -o all_in_one.sh && chmod +x all_in_one.sh && ./all_in_one.sh install
 ```
 
-### 方法三：手动下载安装
+### 方法二：手动下载安装
 
 1. 克隆或下载此仓库到您的计算机
-2. 将所有 `.sh` 文件传输到您的 Android 设备上的 Termux 环境
-3. 在 Termux 中运行安装脚本：
+2. 将 `all_in_one.sh` 文件传输到您的 Android 设备上的 Termux 环境
+3. 在 Termux 中运行脚本：
 
 ```bash
-chmod +x install.sh
-./install.sh
+chmod +x all_in_one.sh
+./all_in_one.sh install
 ```
 
 安装脚本将自动完成以下操作：
@@ -53,22 +41,11 @@ chmod +x install.sh
 - 配置 rclone 连接您的 NAS
 - 安装照片和录音同步脚本到您的主目录
 - 询问您的手机型号以区分不同设备的存储路径
-- 创建启动和停止脚本
 - 设置系统重启后自动启动服务
 
 ## 配置
 
 安装完成后，您可能需要根据您的需求修改以下配置：
-
-### 照片同步配置 (`~/photo_loop.sh`)
-- `UPLOAD_TARGET`: 修改为您的 NAS 目标路径
-- `CAMERA_ID`: 摄像头 ID（通常为 0 或 1）
-- `INTERVAL_SECONDS`: 拍照间隔（秒）
-- `COMPRESSION_QUALITY`: 照片压缩质量（0-100）
-
-### 音频录制配置 (`~/record_loop.sh`)
-- `UPLOAD_TARGET`: 修改为您的 NAS 目标路径
-- `DURATION`: 每段录音的时长（秒）
 
 ### rclone 配置
 运行以下命令配置 rclone 连接您的 NAS：
@@ -80,31 +57,16 @@ rclone config
 
 ### 启动服务
 ```bash
-# 如果使用传统脚本
-~/start_sync.sh
-
-# 如果使用一体化脚本
 ./all_in_one.sh start
 ```
 
 ### 停止服务
 ```bash
-# 如果使用传统脚本
-~/stop_sync.sh
-
-# 如果使用一体化脚本
 ./all_in_one.sh stop
 ```
 
 ### 查看日志
 ```bash
-# 查看照片同步日志
-tail -f ~/photo_loop.log
-
-# 查看录音同步日志
-tail -f ~/record_loop.log
-
-# 如果使用一体化脚本
 ./all_in_one.sh photo-log
 ./all_in_one.sh record-log
 ```
