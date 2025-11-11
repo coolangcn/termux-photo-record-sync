@@ -2,7 +2,7 @@
 
 # Termux 照片和录音同步到 NAS 一体化脚本
 # 作者: coolangcn
-# 版本: 1.0.18
+# 版本: 1.0.19
 # 最后修改时间: 2025-11-11
 
 # ==================== 配置区 ====================
@@ -118,9 +118,7 @@ cleanup_old_files() {
     rm -f "$HOME/record_loop_nohup.log"
 }
 
-# 创建照片循环脚本函数
-create_photo_loop_function() {
-    cat > "$HOME/photo_loop_function.sh" << 'EOF'
+# 照片循环函数
 photo_loop() {
     # 创建必要的目录
     RECORD_DIR="$HOME/records"
@@ -231,12 +229,8 @@ photo_loop() {
         sleep "$INTERVAL_SECONDS"
     done
 }
-EOF
-}
 
-# 创建录音循环脚本函数
-create_record_loop_function() {
-    cat > "$HOME/record_loop_function.sh" << 'EOF'
+# 录音循环函数
 record_loop() {
     # 创建必要的目录
     RECORD_DIR="$HOME/records"
@@ -363,8 +357,6 @@ record_loop() {
         sleep 3
     done
 }
-EOF
-}
 
 # 安装脚本
 install_script() {
@@ -379,14 +371,6 @@ install_script() {
     # 复制当前脚本到 HOME 目录
     cp "$0" "$HOME/all_in_one.sh"
     chmod +x "$HOME/all_in_one.sh"
-    
-    # 创建照片和录音循环函数文件
-    create_photo_loop_function
-    create_record_loop_function
-    
-    # 添加执行权限
-    chmod +x "$HOME/photo_loop_function.sh"
-    chmod +x "$HOME/record_loop_function.sh"
     
     echo "✅ 一体化脚本已安装到 $HOME"
     
@@ -424,7 +408,7 @@ install_script() {
     echo "📂 NAS 音频接收目录: synology:/download/records/${PHONE_MODEL}"
     echo ""
     echo "📄 脚本版本信息:"
-    echo "  版本号: 1.0.18"
+    echo "  版本号: 1.0.19"
     echo "  最后修改时间: 2025-11-11"
     echo ""
     echo "📌 使用说明:"
@@ -452,6 +436,9 @@ start_services() {
         exit 1
     fi
     
+    # 创建日志文件
+    touch "$HOME/photo_loop.log" "$HOME/record_loop.log"
+    
     # 启动照片同步服务
     if pgrep -f "all_in_one.sh.*photo_loop" > /dev/null; then
         echo "📸 照片同步服务已在运行"
@@ -460,18 +447,12 @@ start_services() {
         PHOTO_UPLOAD_TARGET="synology:/download/records/${PHONE_MODEL}_Photos"
         echo "🔄 启动照片同步服务，上传目标: $PHOTO_UPLOAD_TARGET"
         
-        # 创建临时照片脚本
-        TMP_PHOTO_SCRIPT=$(mktemp)
-        cat > "$TMP_PHOTO_SCRIPT" << EOF
-#!/data/data/com.termux/files/usr/bin/bash
-source "$HOME/photo_loop_function.sh"
-UPLOAD_TARGET="$PHOTO_UPLOAD_TARGET"
-export UPLOAD_TARGET COMPRESSION_QUALITY CAMERA_ID INTERVAL_SECONDS
-photo_loop
-EOF
-        
-        chmod +x "$TMP_PHOTO_SCRIPT"
-        nohup "$TMP_PHOTO_SCRIPT" > "$HOME/photo_loop_nohup.log" 2>&1 &
+        # 直接调用函数，不使用临时脚本
+        (
+            UPLOAD_TARGET="$PHOTO_UPLOAD_TARGET"
+            export UPLOAD_TARGET COMPRESSION_QUALITY CAMERA_ID INTERVAL_SECONDS
+            photo_loop
+        ) &
         echo "📸 照片同步服务已启动"
     fi
     
@@ -483,18 +464,12 @@ EOF
         RECORD_UPLOAD_TARGET="synology:/download/records/${PHONE_MODEL}"
         echo "🔄 启动录音同步服务，上传目标: $RECORD_UPLOAD_TARGET"
         
-        # 创建临时录音脚本
-        TMP_RECORD_SCRIPT=$(mktemp)
-        cat > "$TMP_RECORD_SCRIPT" << EOF
-#!/data/data/com.termux/files/usr/bin/bash
-source "$HOME/record_loop_function.sh"
-UPLOAD_TARGET="$RECORD_UPLOAD_TARGET"
-export UPLOAD_TARGET AUDIO_DURATION
-record_loop
-EOF
-        
-        chmod +x "$TMP_RECORD_SCRIPT"
-        nohup "$TMP_RECORD_SCRIPT" > "$HOME/record_loop_nohup.log" 2>&1 &
+        # 直接调用函数，不使用临时脚本
+        (
+            UPLOAD_TARGET="$RECORD_UPLOAD_TARGET"
+            export UPLOAD_TARGET AUDIO_DURATION
+            record_loop
+        ) &
         echo "🎙️ 录音同步服务已启动"
     fi
     
