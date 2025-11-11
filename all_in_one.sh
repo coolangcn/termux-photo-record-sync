@@ -130,8 +130,7 @@ photo_loop() {
     # 日志文件
     LOG_FILE="$HOME/photo_loop.log"
     
-    # 上传目标（将被替换）
-    UPLOAD_TARGET=""
+ 
     
     # 检查 UPLOAD_TARGET 是否已设置
     if [ -z "$UPLOAD_TARGET" ]; then
@@ -242,8 +241,7 @@ record_loop() {
     # 日志文件
     LOG_FILE="$HOME/record_loop.log"
     
-    # 上传目标（将被替换）
-    UPLOAD_TARGET=""
+ 
     
     # 检查 UPLOAD_TARGET 是否已设置
     if [ -z "$UPLOAD_TARGET" ]; then
