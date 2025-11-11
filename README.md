@@ -17,6 +17,7 @@
 - `record_loop.sh`: 音频录制和同步脚本
 - `install.sh`: 一键部署安装脚本
 - `download_and_install.sh`: 从 GitHub 下载并安装的脚本
+- `all_in_one.sh`: 一体化脚本（包含所有功能）
 
 ## 部署安装
 
@@ -28,7 +29,15 @@
 curl -s https://raw.githubusercontent.com/coolangcn/termux-photo-record-sync/main/download_and_install.sh | bash
 ```
 
-### 方法二：手动下载安装
+### 方法二：使用一体化脚本（最简单）
+
+在 Termux 中运行以下命令：
+
+```bash
+curl -s https://raw.githubusercontent.com/coolangcn/termux-photo-record-sync/main/all_in_one.sh -o all_in_one.sh && chmod +x all_in_one.sh && ./all_in_one.sh install
+```
+
+### 方法三：手动下载安装
 
 1. 克隆或下载此仓库到您的计算机
 2. 将所有 `.sh` 文件传输到您的 Android 设备上的 Termux 环境
@@ -71,12 +80,20 @@ rclone config
 
 ### 启动服务
 ```bash
+# 如果使用传统脚本
 ~/start_sync.sh
+
+# 如果使用一体化脚本
+./all_in_one.sh start
 ```
 
 ### 停止服务
 ```bash
+# 如果使用传统脚本
 ~/stop_sync.sh
+
+# 如果使用一体化脚本
+./all_in_one.sh stop
 ```
 
 ### 查看日志
@@ -86,6 +103,10 @@ tail -f ~/photo_loop.log
 
 # 查看录音同步日志
 tail -f ~/record_loop.log
+
+# 如果使用一体化脚本
+./all_in_one.sh photo-log
+./all_in_one.sh record-log
 ```
 
 ## 注意事项
