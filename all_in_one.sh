@@ -2,7 +2,7 @@
 
 # Termux 照片和录音同步到 NAS 一体化脚本
 # 作者: coolangcn
-# 版本: 1.0.19 (已修复 PHONE_MODEL 传递问题)
+# 版本: 1.0.20
 # 最后修改时间: 2025-11-11
 
 # ==================== 配置区 ====================
@@ -23,12 +23,12 @@ show_help() {
     echo "================================================"
     echo ""
     echo "用法:"
-    echo "  安装并配置:   ./all_in_one.sh install [手机型号]"
-    echo "  启动服务:     ./all_in_one.sh start"
-    echo "  停止服务:     ./all_in_one.sh stop"
+    echo "  安装并配置:     ./all_in_one.sh install [手机型号]"
+    echo "  启动服务:       ./all_in_one.sh start"
+    echo "  停止服务:       ./all_in_one.sh stop"
     echo "  查看照片日志:   ./all_in_one.sh photo-log"
     echo "  查看录音日志:   ./all_in_one.sh record-log"
-    echo "  显示帮助:     ./all_in_one.sh help"
+    echo "  显示帮助:       ./all_in_one.sh help"
     echo ""
     echo "示例:"
     echo "  ./all_in_one.sh install Sony-1"
@@ -89,14 +89,21 @@ configure_rclone() {
 # 停止正在运行的服务
 stop_services() {
     echo "🛑 停止正在运行的服务..."
-    if pgrep -f "all_in_one.sh.*photo_loop" > /dev/null; then
-        pkill -f "all_in_one.sh.*photo_loop"
+    
+    # 停止照片同步服务
+    if pgrep -f "photo_loop_function.sh" > /dev/null; then
+        pkill -f "photo_loop_function.sh"
         echo "📸 照片同步服务已停止"
+    else
+        echo "📸 照片同步服务未运行"
     fi
     
-    if pgrep -f "all_in_one.sh.*record_loop" > /dev/null; then
-        pkill -f "all_in_one.sh.*record_loop"
+    # 停止录音同步服务
+    if pgrep -f "record_loop_function.sh" > /dev/null; then
+        pkill -f "record_loop_function.sh"
         echo "🎙️ 录音同步服务已停止"
+    else
+        echo "🎙️ 录音同步服务未运行"
     fi
     
     # 清理可能残留的录音进程
