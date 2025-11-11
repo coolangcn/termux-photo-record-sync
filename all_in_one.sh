@@ -2,7 +2,7 @@
 
 # Termux 照片和录音同步到 NAS 一体化脚本
 # 作者: coolangcn
-# 版本: 1.0.19
+# 版本: 1.0.19 (已修复 PHONE_MODEL 传递问题)
 # 最后修改时间: 2025-11-11
 
 # ==================== 配置区 ====================
@@ -23,12 +23,12 @@ show_help() {
     echo "================================================"
     echo ""
     echo "用法:"
-    echo "  安装并配置:     ./all_in_one.sh install [手机型号]"
-    echo "  启动服务:       ./all_in_one.sh start"
-    echo "  停止服务:       ./all_in_one.sh stop"
+    echo "  安装并配置:   ./all_in_one.sh install [手机型号]"
+    echo "  启动服务:     ./all_in_one.sh start"
+    echo "  停止服务:     ./all_in_one.sh stop"
     echo "  查看照片日志:   ./all_in_one.sh photo-log"
     echo "  查看录音日志:   ./all_in_one.sh record-log"
-    echo "  显示帮助:       ./all_in_one.sh help"
+    echo "  显示帮助:     ./all_in_one.sh help"
     echo ""
     echo "示例:"
     echo "  ./all_in_one.sh install Sony-1"
@@ -372,6 +372,14 @@ install_script() {
     cp "$0" "$HOME/all_in_one.sh"
     chmod +x "$HOME/all_in_one.sh"
     
+    # 【修复】使用 sed 将手机型号永久写入新脚本的配置区
+    # 使用 | 作为分隔符，避免 $HOME 路径中的 / 导致冲突
+    if ! sed -i "s|^PHONE_MODEL=\"\"|PHONE_MODEL=\"$PHONE_MODEL\"|" "$HOME/all_in_one.sh"; then
+        echo "❌ 错误: 无法将手机型号写入 $HOME/all_in_one.sh"
+        exit 1
+    fi
+    echo "✅ 手机型号 ($PHONE_MODEL) 已保存到 $HOME/all_in_one.sh"
+    
     echo "✅ 一体化脚本已安装到 $HOME"
     
     # 设置定时任务以自动启动脚本
@@ -391,7 +399,7 @@ install_script() {
         fi
         
         # 创建新的 crontab 条目
-        (crontab -l 2>/dev/null; echo "@reboot $HOME/all_in_one.sh start") | crontab -
+        (crontab -l 2>/dev/null | grep -v "$HOME/all_in_one.sh start"; echo "@reboot $HOME/all_in_one.sh start") | crontab -
         echo "✅ 定时任务已设置，系统重启后将自动启动同步服务"
     else
         echo "❌ 无法安装或找不到 crontab，无法设置定时任务"
@@ -509,25 +517,17 @@ main() {
             install_script
             ;;
         start)
-            # 从已安装的脚本中获取手机型号
-            if [ -f "$HOME/all_in_one.sh" ]; then
-                # 尝试从已安装的脚本中获取手机型号
-                INSTALLED_PHONE_MODEL=$(grep "手机型号:" "$HOME/all_in_one.sh" 2>/dev/null | head -n 1 | awk -F ': ' '{print $2}')
-                if [ -n "$INSTALLED_PHONE_MODEL" ]; then
-                    PHONE_MODEL="$INSTALLED_PHONE_MODEL"
-                fi
-            fi
+            # 【修复】PHONE_MODEL 变量在脚本启动时已从顶部配置区加载
+            # 我们只需要检查它是否为空
             
             if [ -z "$PHONE_MODEL" ]; then
-                echo "📱 请输入您的手机型号（例如: Pixel_5, Samsung_S21等）:"
-                read PHONE_MODEL
-            fi
-            
-            if [ -z "$PHONE_MODEL" ]; then
-                echo "❌ 错误: 手机型号不能为空"
+                echo "❌ 错误: 手机型号未设置。"
+                echo "💡 请先运行安装命令以设置型号:"
+                echo "   $0 install [您的手机型号]"
                 exit 1
             fi
             
+            echo "✅ 成功加载手机型号: $PHONE_MODEL"
             start_services
             ;;
         stop)
