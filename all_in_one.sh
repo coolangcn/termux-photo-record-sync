@@ -326,12 +326,12 @@ record_loop() {
         sleep 1
         
         TIMESTAMP=$(date +%Y-%m-%d_%H-%M-%S)
-        FILE="$RECORD_DIR/TermuxAudioRecording_${TIMESTAMP}.acc" # 当前文件仍需生成文件名
+        FILE="$RECORD_DIR/TermuxAudioRecording_${TIMESTAMP}.m4a" # 当前文件仍需生成文件名
         
         echo "🎧 开始录音：$FILE" | tee -a "$LOG_FILE"
         
         # 使用 -l 0 启动无限录音
-        termux-microphone-record -e acc -l 0 -f "$FILE" 2>/dev/null &
+        termux-microphone-record -e wav -l 0 -f "$FILE" 2>/dev/null &
         PID=$!
         
         # 等待录音进程启动并开始写入文件
@@ -370,15 +370,15 @@ record_loop() {
             continue
         fi
         
-        echo "📤 移动所有 .acc 文件至 NAS: $UPLOAD_TARGET/" | tee -a "$LOG_FILE"
+        echo "📤 移动所有 .m4a 文件至 NAS: $UPLOAD_TARGET/" | tee -a "$LOG_FILE"
         
-        # 使用 cd 进入目录，并 rclone move 整个目录中所有符合条件的 (.acc) 文件
-        # --include "*.acc" 确保只移动录音文件，不移动日志或 PID 文件
-        rclone_log_output=$(cd "$RECORD_DIR" && rclone move . "$UPLOAD_TARGET" --include "*.acc" --ignore-errors --retries 3 --low-level-retries 1 --quiet 2>&1)
+        # 使用 cd 进入目录，并 rclone move 整个目录中所有符合条件的 (.m4a) 文件
+        # --include "*.m4a" 确保只移动录音文件，不移动日志或 PID 文件
+        rclone_log_output=$(cd "$RECORD_DIR" && rclone move . "$UPLOAD_TARGET" --include "*.m4a" --ignore-errors --retries 3 --low-level-retries 1 --quiet 2>&1)
         RCLONE_STATUS=$?
         
         if [ $RCLONE_STATUS -eq 0 ]; then
-            echo "✅ 移动成功 (所有 .acc 文件已上传) $(date)" | tee -a "$LOG_FILE"
+            echo "✅ 移动成功 (所有 .m4a 文件已上传) $(date)" | tee -a "$LOG_FILE"
         else
             echo "❌ 移动失败 (状态码: $RCLONE_STATUS)。本地录音文件保留。" | tee -a "$LOG_FILE"
             echo "--- Rclone 错误详情 ---" | tee -a "$LOG_FILE"
@@ -451,7 +451,7 @@ install_script() {
     echo ""
     echo "📄 脚本版本信息:"
     echo "  版本号: 1.0.19"
-    echo "  最后修改时间: 2025-11-11"
+    echo "  最后修改时间: 2025-11-16"
     echo ""
     echo "📌 使用说明:"
     echo "  启动服务: $HOME/all_in_one.sh start"
