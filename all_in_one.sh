@@ -331,7 +331,7 @@ record_loop() {
         echo "🎧 开始录音：$FILE" | tee -a "$LOG_FILE"
         
         # 使用 -l 0 启动无限录音
-        termux-microphone-record -e wav -l 0 -f "$FILE" 2>/dev/null &
+        termux-microphone-record -e wav -r 16000 -l 0 -f "$FILE" 2>/dev/null &
         PID=$!
         
         # 等待录音进程启动并开始写入文件
