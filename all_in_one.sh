@@ -28,11 +28,13 @@ show_help() {
     echo "  停止服务:       ./all_in_one.sh stop"
     echo "  查看照片日志:   ./all_in_one.sh photo-log"
     echo "  查看录音日志:   ./all_in_one.sh record-log"
+    echo "  检查并修复服务: ./all_in_one.sh watchdog"
     echo "  显示帮助:       ./all_in_one.sh help"
     echo ""
     echo "示例:"
     echo "  ./all_in_one.sh install Sony-1"
     echo "  ./all_in_one.sh start"
+    echo "  ./all_in_one.sh watchdog"
     echo "  ./all_in_one.sh stop"
     echo ""
 }
@@ -73,6 +75,19 @@ install_packages() {
     fi
     
     echo "✅ 必要包安装完成"
+}
+
+# 发送 Termux 通知
+send_notification() {
+    local title="$1"
+    local message="$2"
+    local id="${3:-termux_sync_watchdog}"
+    
+    if command -v termux-notification &> /dev/null; then
+        termux-notification -t "$title" -c "$message" --id "$id"
+    else
+        echo "⚠️ termux-api 未安装，无法发送通知"
+    fi
 }
 
 # 配置 rclone
@@ -152,6 +167,7 @@ cleanup_old_files() {
     rm -f "$HOME/record_loop.log"
     rm -f "$HOME/photo_loop_nohup.log"
     rm -f "$HOME/record_loop_nohup.log"
+    rm -f "$HOME/watchdog.log"
 }
 
 # 照片循环函数
@@ -392,6 +408,70 @@ record_loop() {
     done
 }
 
+# 检查服务状态
+check_service_status() {
+    local service_name="$1"
+    local pattern="$2"
+    
+    if pgrep -f "$pattern" > /dev/null; then
+        return 0 # 正在运行
+    else
+        return 1 # 未运行
+    fi
+}
+
+# 守护进程
+watchdog() {
+    echo "🔍 正在检查同步服务状态... $(date)"
+    local restarted=0
+    local log_file="$HOME/watchdog.log"
+    
+    # 确保日志文件存在
+    touch "$log_file"
+
+    # 1. 检查照片同步服务
+    if ! check_service_status "照片同步" "all_in_one.sh.*photo_loop"; then
+        echo "❌ 照片同步服务已停止，正在尝试重启..." | tee -a "$log_file"
+        
+        # 重新导出变量并后台运行
+        (
+            PHOTO_UPLOAD_TARGET="synology:/download/records/${PHONE_MODEL}_Photos"
+            UPLOAD_TARGET="$PHOTO_UPLOAD_TARGET"
+            export UPLOAD_TARGET COMPRESSION_QUALITY CAMERA_ID INTERVAL_SECONDS
+            photo_loop
+        ) &
+        
+        send_notification "🚨 同步服务异常" "📸 照片同步服务已停止并尝试自动重启" "photo_watchdog"
+        restarted=1
+    else
+        echo "✅ 照片同步服务正常"
+    fi
+
+    # 2. 检查录音同步服务
+    if ! check_service_status "录音同步" "all_in_one.sh.*record_loop"; then
+        echo "❌ 录音同步服务已停止，正在尝试重启..." | tee -a "$log_file"
+        
+        # 重新导出变量并后台运行
+        (
+            RECORD_UPLOAD_TARGET="synology:/download/records/${PHONE_MODEL}"
+            UPLOAD_TARGET="$RECORD_UPLOAD_TARGET"
+            export UPLOAD_TARGET AUDIO_DURATION
+            record_loop
+        ) &
+        
+        send_notification "🚨 同步服务异常" "🎙️ 录音同步服务已停止并尝试自动重启" "record_watchdog"
+        restarted=1
+    else
+        echo "✅ 录音同步服务正常"
+    fi
+
+    if [ $restarted -eq 1 ]; then
+        echo "✅ Watchdog 处理完成。有服务被重启。" | tee -a "$log_file"
+    else
+        echo "✅ Watchdog 检查完成。所有服务运行正常。"
+    fi
+}
+
 # 安装脚本
 install_script() {
     echo "💾 安装 Termux 照片和录音同步到 NAS 一体化脚本..."
@@ -433,8 +513,8 @@ install_script() {
         fi
         
         # 创建新的 crontab 条目
-        (crontab -l 2>/dev/null | grep -v "$HOME/all_in_one.sh start"; echo "@reboot $HOME/all_in_one.sh start") | crontab -
-        echo "✅ 定时任务已设置，系统重启后将自动启动同步服务"
+        (crontab -l 2>/dev/null | grep -v "$HOME/all_in_one.sh"; echo "@reboot $HOME/all_in_one.sh start"; echo "*/10 * * * * $HOME/all_in_one.sh watchdog") | crontab -
+        echo "✅ 定时任务已设置：重启自动启动服务，且每10分钟进行一次健康检查 (Watchdog)"
     else
         echo "❌ 无法安装或找不到 crontab，无法设置定时任务"
         echo "💡 您可以手动运行以下命令来启动服务:"
@@ -582,6 +662,9 @@ main() {
                 echo "❌ 录音日志文件不存在"
                 exit 1
             fi
+            ;;
+        watchdog)
+            watchdog
             ;;
         help|*)
             show_help
