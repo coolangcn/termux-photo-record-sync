@@ -281,7 +281,7 @@ photo_loop() {
     done
 }
 
-# 录音循环函数
+# 录音循环函数 - 最小延迟快速切换模式
 record_loop() {
     # 创建必要的目录
     RECORD_DIR="$HOME/records"
@@ -292,8 +292,6 @@ record_loop() {
     
     # 日志文件
     LOG_FILE="$HOME/record_loop.log"
-    
- 
     
     # 检查 UPLOAD_TARGET 是否已设置
     if [ -z "$UPLOAD_TARGET" ]; then
@@ -322,89 +320,80 @@ record_loop() {
     if pgrep termux-microphone-record > /dev/null; then
         echo "🚨 启动前，尝试终止残留录音进程..." | tee -a "$LOG_FILE"
         termux-microphone-record -q 2>/dev/null
-        sleep 2
+        sleep 1
         pkill -9 termux-microphone-record 2>/dev/null
-        sleep 2
+        sleep 1
     fi
     
     # --- 启动信息 ---
-    echo "🎙️ 循环录音脚本启动 (Q模式) $(date)" | tee -a "$LOG_FILE"
+    echo "🎙️ 循环录音脚本启动 (最小延迟快速切换模式) $(date)" | tee -a "$LOG_FILE"
     echo "录音目录：$RECORD_DIR" | tee -a "$LOG_FILE"
     echo "上传目标：$UPLOAD_TARGET" | tee -a "$LOG_FILE"
     echo "录音时长：${AUDIO_DURATION}s" | tee -a "$LOG_FILE"
     
-    # --- 主循环 ---
+    # --- 最小延迟主循环 ---
+    # 注意：由于手机麦克风通常只能被一个进程独占使用
+    # 无法实现真正的双线程同时录音，只能通过最小化切换延迟来优化
+    
     while true; do
-        # 循环内清理残留录音进程
+        # 快速清理残留进程
         termux-microphone-record -q 2>/dev/null
-        sleep 1
         pkill -9 termux-microphone-record 2>/dev/null
-        sleep 1
         
         TIMESTAMP=$(date +%Y-%m-%d_%H-%M-%S)
-        FILE="$RECORD_DIR/TermuxAudioRecording_${TIMESTAMP}.m4a" # 当前文件仍需生成文件名
+        FILE="$RECORD_DIR/TermuxAudioRecording_${TIMESTAMP}.m4a"
         
         echo "🎧 开始录音：$FILE" | tee -a "$LOG_FILE"
         
-        # 使用 -l 0 启动无限录音
-        termux-microphone-record -e wav -r 16000 -l 0 -f "$FILE" 2>/dev/null &
+        # 使用 -l 参数直接限制录音时长（单位：毫秒）
+        # 这样不需要手动发送停止信号，录音会自动停止
+        DURATION_MS=$((AUDIO_DURATION * 1000))
+        termux-microphone-record -e wav -r 16000 -l "$DURATION_MS" -f "$FILE" 2>/dev/null &
         PID=$!
         
-        # 等待录音进程启动并开始写入文件
-        sleep 3
+        # 等待录音进程启动
+        sleep 1
         
         # 检查录音文件是否已创建
         if [ ! -f "$FILE" ]; then
             echo "❌ 录音进程启动失败，未创建文件 $(date)" | tee -a "$LOG_FILE"
-            # 尝试清理
-            termux-microphone-record -q 2>/dev/null
-            pkill -9 termux-microphone-record 2>/dev/null
-            sleep 3
+            wait $PID 2>/dev/null
+            sleep 1
             continue
         fi
         
-        # 通过 sleep 精确控制录音时长
+        # 等待录音完成（使用 -l 参数后，录音会自动停止）
         echo "⏳ 录音中... 持续 ${AUDIO_DURATION} 秒..." | tee -a "$LOG_FILE"
-        sleep "$AUDIO_DURATION"
         
-        # 发送 -q 信号，终止录音
-        echo "⏹️ 终止录音..." | tee -a "$LOG_FILE"
-        termux-microphone-record -q 2>/dev/null
+        # 等待录音进程结束
+        wait $PID 2>/dev/null
         
-        # 等待录音进程完全退出，并写入文件
-        sleep 2
-        
-        # 再次使用 pkill 确保进程完全终止，防止残留
+        # 确保进程已终止
         pkill -9 termux-microphone-record 2>/dev/null
-        sleep 1
         
-        # 检查当前文件大小，如果为空则删除并跳过上传
+        # 检查录音文件
         if [ ! -s "$FILE" ]; then
             echo "⚠️ 当前录音文件为空或录音失败 $(date)" | tee -a "$LOG_FILE"
             rm -f "$FILE" 2>/dev/null
-            sleep 3
+            sleep 1
             continue
         fi
         
-        echo "📤 移动所有 .m4a 文件至 NAS: $UPLOAD_TARGET/" | tee -a "$LOG_FILE"
+        echo "📤 上传录音文件: $(basename "$FILE")" | tee -a "$LOG_FILE"
         
-        # 使用 cd 进入目录，并 rclone move 整个目录中所有符合条件的 (.m4a) 文件
-        # --include "*.m4a" 确保只移动录音文件，不移动日志或 PID 文件
-        rclone_log_output=$(cd "$RECORD_DIR" && rclone move . "$UPLOAD_TARGET" --include "*.m4a" --ignore-errors --retries 3 --low-level-retries 1 --quiet 2>&1)
-        RCLONE_STATUS=$?
+        # 后台上传，不阻塞下一次录音
+        (
+            rclone_log_output=$(rclone move "$FILE" "$UPLOAD_TARGET" --ignore-errors --retries 3 --low-level-retries 1 --quiet 2>&1)
+            if [ $? -eq 0 ]; then
+                echo "✅ 上传成功: $(basename "$FILE") $(date)" | tee -a "$LOG_FILE"
+            else
+                echo "❌ 上传失败: $(basename "$FILE")" | tee -a "$LOG_FILE"
+            fi
+        ) &
         
-        if [ $RCLONE_STATUS -eq 0 ]; then
-            echo "✅ 移动成功 (所有 .m4a 文件已上传) $(date)" | tee -a "$LOG_FILE"
-        else
-            echo "❌ 移动失败 (状态码: $RCLONE_STATUS)。本地录音文件保留。" | tee -a "$LOG_FILE"
-            echo "--- Rclone 错误详情 ---" | tee -a "$LOG_FILE"
-            echo "$rclone_log_output" | tee -a "$LOG_FILE"
-            echo "------------------------" | tee -a "$LOG_FILE"
-        fi
-        
-        # 等待 3 秒后，进行下一次录音
-        echo "😴 等待 3 秒..." | tee -a "$LOG_FILE"
-        sleep 3
+        # 极短暂等待后立即开始下一次录音
+        # 由于上传在后台进行，不会阻塞录音
+        sleep 0.5
     done
 }
 
