@@ -233,29 +233,57 @@ photo_loop() {
             # 清理可能存在的旧临时文件
             rm -f "$TEMP_FILE" 2>/dev/null
             
+            # 检查termux-api是否可用
+            if ! command -v termux-camera-photo &> /dev/null; then
+                echo "❌ termux-camera-photo 命令不存在，请安装 termux-api" | tee -a "$LOG_FILE"
+                break
+            fi
+            
             # 执行拍照命令（保留错误输出以便调试）
-            termux-camera-photo -c "$CAMERA_ID" "$TEMP_FILE" 2>&1
+            echo "📸 使用相机ID: $CAMERA_ID 拍照到: $TEMP_FILE" | tee -a "$LOG_FILE"
+            PHOTO_OUTPUT=$(termux-camera-photo -c "$CAMERA_ID" "$TEMP_FILE" 2>&1)
             PHOTO_STATUS=$?
             
             echo "📊 拍照命令返回状态码: $PHOTO_STATUS" | tee -a "$LOG_FILE"
+            if [ -n "$PHOTO_OUTPUT" ]; then
+                echo "📋 拍照命令输出: $PHOTO_OUTPUT" | tee -a "$LOG_FILE"
+            fi
+            
+            # 列出目录内容查看文件状态
+            echo "📁 目录内容:" | tee -a "$LOG_FILE"
+            ls -la "$RECORD_DIR" | grep -E "(CameraPhoto|$TIMESTAMP)" | tee -a "$LOG_FILE" || echo "(无匹配文件)" | tee -a "$LOG_FILE"
             
             # 等待文件写入完成（增加等待时间）
-            sleep 3
+            sleep 5
             
-            # 检查文件是否生成
-            if [ -f "$TEMP_FILE" ] && [ -s "$TEMP_FILE" ]; then
-                FILE_SIZE=$(stat -c%s "$TEMP_FILE" 2>/dev/null || echo "0")
-                echo "✅ 照片文件已生成，大小: $FILE_SIZE 字节" | tee -a "$LOG_FILE"
-                PHOTO_SUCCESS=true
+            # 再次检查文件
+            echo "🔍 检查文件: $TEMP_FILE" | tee -a "$LOG_FILE"
+            if [ -e "$TEMP_FILE" ]; then
+                if [ -s "$TEMP_FILE" ]; then
+                    FILE_SIZE=$(stat -c%s "$TEMP_FILE" 2>/dev/null || echo "0")
+                    echo "✅ 照片文件已生成，大小: $FILE_SIZE 字节" | tee -a "$LOG_FILE"
+                    PHOTO_SUCCESS=true
+                else
+                    echo "⚠️ 文件存在但为空 (大小为0)" | tee -a "$LOG_FILE"
+                fi
             else
-                echo "⚠️ 照片文件未生成或为空，等待后重试..." | tee -a "$LOG_FILE"
-                sleep 2
+                echo "⚠️ 文件不存在: $TEMP_FILE" | tee -a "$LOG_FILE"
+            fi
+            
+            if [ "$PHOTO_SUCCESS" = false ]; then
+                echo "⏱️ 等待后重试..." | tee -a "$LOG_FILE"
+                sleep 3
             fi
         done
         
         if [ "$PHOTO_SUCCESS" = false ]; then
             echo "❌ 拍照失败，已达到最大重试次数 $(date)" | tee -a "$LOG_FILE"
             rm -f "$TEMP_FILE" 2>/dev/null
+            # 检查termux-api权限
+            echo "🔧 请检查:" | tee -a "$LOG_FILE"
+            echo "   1. Termux:API 应用是否已安装" | tee -a "$LOG_FILE"
+            echo "   2. 相机权限是否已授予 Termux" | tee -a "$LOG_FILE"
+            echo "   3. 相机是否被其他应用占用" | tee -a "$LOG_FILE"
             sleep 30
             continue
         fi
@@ -361,7 +389,6 @@ record_loop() {
         # 快速清理残留进程
         termux-microphone-record -q 2>/dev/null
         pkill -9 termux-microphone-record 2>/dev/null
-        sleep 0.5
         
         TIMESTAMP=$(date +%Y-%m-%d_%H-%M-%S)
         FILE="$RECORD_DIR/TermuxAudioRecording_${TIMESTAMP}.m4a"
@@ -372,8 +399,12 @@ record_loop() {
         termux-microphone-record -e wav -r 16000 -l 0 -f "$FILE" 2>/dev/null &
         PID=$!
         
-        # 等待录音进程启动
-        sleep 2
+        # 等待录音进程启动并创建文件
+        START_WAIT=0
+        while [ $START_WAIT -lt 15 ] && [ ! -f "$FILE" ]; do
+            sleep 0.1
+            START_WAIT=$((START_WAIT + 1))
+        done
         
         # 检查录音文件是否已创建
         if [ ! -f "$FILE" ]; then
@@ -381,7 +412,7 @@ record_loop() {
             kill $PID 2>/dev/null
             termux-microphone-record -q 2>/dev/null
             pkill -9 termux-microphone-record 2>/dev/null
-            sleep 1
+            sleep 0.5
             continue
         fi
         
@@ -393,15 +424,19 @@ record_loop() {
         echo "⏹️ 停止录音..." | tee -a "$LOG_FILE"
         termux-microphone-record -q 2>/dev/null
         
-        # 等待进程结束
-        sleep 1
+        # 快速等待进程结束
+        STOP_WAIT=0
+        while [ $STOP_WAIT -lt 10 ] && ps -p $PID > /dev/null 2>&1; do
+            sleep 0.1
+            STOP_WAIT=$((STOP_WAIT + 1))
+        done
         pkill -9 termux-microphone-record 2>/dev/null
         
         # 检查录音文件
         if [ ! -s "$FILE" ]; then
             echo "⚠️ 当前录音文件为空或录音失败 $(date)" | tee -a "$LOG_FILE"
             rm -f "$FILE" 2>/dev/null
-            sleep 1
+            sleep 0.3
             continue
         fi
         
@@ -420,8 +455,8 @@ record_loop() {
             fi
         ) &
         
-        # 短暂等待后立即开始下一次录音
-        sleep 0.5
+        # 极短暂等待后立即开始下一次录音
+        sleep 0.2
     done
 }
 
