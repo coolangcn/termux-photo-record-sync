@@ -221,22 +221,42 @@ photo_loop() {
         
         echo "📷 正在拍照：$FILE" | tee -a "$LOG_FILE"
         
-        # 1. 执行拍照命令
-        termux-camera-photo -c "$CAMERA_ID" "$TEMP_FILE" 2>/dev/null
-        PHOTO_STATUS=$?
+        # 1. 执行拍照命令（带重试机制）
+        RETRY_COUNT=0
+        MAX_RETRIES=3
+        PHOTO_SUCCESS=false
         
-        sleep 2 # 等待文件写入完成
+        while [ $RETRY_COUNT -lt $MAX_RETRIES ] && [ "$PHOTO_SUCCESS" = false ]; do
+            RETRY_COUNT=$((RETRY_COUNT + 1))
+            echo "🔄 拍照尝试 $RETRY_COUNT/$MAX_RETRIES..." | tee -a "$LOG_FILE"
+            
+            # 清理可能存在的旧临时文件
+            rm -f "$TEMP_FILE" 2>/dev/null
+            
+            # 执行拍照命令（保留错误输出以便调试）
+            termux-camera-photo -c "$CAMERA_ID" "$TEMP_FILE" 2>&1
+            PHOTO_STATUS=$?
+            
+            echo "📊 拍照命令返回状态码: $PHOTO_STATUS" | tee -a "$LOG_FILE"
+            
+            # 等待文件写入完成（增加等待时间）
+            sleep 3
+            
+            # 检查文件是否生成
+            if [ -f "$TEMP_FILE" ] && [ -s "$TEMP_FILE" ]; then
+                FILE_SIZE=$(stat -c%s "$TEMP_FILE" 2>/dev/null || echo "0")
+                echo "✅ 照片文件已生成，大小: $FILE_SIZE 字节" | tee -a "$LOG_FILE"
+                PHOTO_SUCCESS=true
+            else
+                echo "⚠️ 照片文件未生成或为空，等待后重试..." | tee -a "$LOG_FILE"
+                sleep 2
+            fi
+        done
         
-        if [ $PHOTO_STATUS -ne 0 ]; then
-            echo "❌ 拍照命令执行失败 (状态码: $PHOTO_STATUS) $(date)" | tee -a "$LOG_FILE"
-            rm -f "$TEMP_FILE" 2>/dev/null # 清理可能的临时文件
-            sleep 60
-            continue
-        fi
-        
-        if [ ! -s "$TEMP_FILE" ]; then
-            echo "⚠️ 照片文件未生成或为空 $(date)" | tee -a "$LOG_FILE"
-            sleep 60
+        if [ "$PHOTO_SUCCESS" = false ]; then
+            echo "❌ 拍照失败，已达到最大重试次数 $(date)" | tee -a "$LOG_FILE"
+            rm -f "$TEMP_FILE" 2>/dev/null
+            sleep 30
             continue
         fi
         
@@ -260,14 +280,16 @@ photo_loop() {
         COMPRESSED_SIZE=$(du -h "$FILE" | awk '{print $1}')
         echo "✅ 压缩完成。现大小: $COMPRESSED_SIZE" | tee -a "$LOG_FILE"
         
-        # 3. 移动和上传逻辑
-        echo "📤 移动照片至 NAS: $UPLOAD_TARGET/$(basename "$FILE")" | tee -a "$LOG_FILE"
+        # 3. 移动和上传逻辑（按日期文件夹存放）
+        CURRENT_DATE=$(date +%Y-%m-%d)
+        DATE_TARGET="$UPLOAD_TARGET/$CURRENT_DATE"
+        echo "📤 移动照片至 NAS: $DATE_TARGET/$(basename "$FILE")" | tee -a "$LOG_FILE"
         
-        rclone_log_output=$(rclone move "$FILE" "$UPLOAD_TARGET" --ignore-errors --retries 3 --low-level-retries 1 --quiet 2>&1)
+        rclone_log_output=$(rclone move "$FILE" "$DATE_TARGET" --ignore-errors --retries 3 --low-level-retries 1 --quiet 2>&1)
         RCLONE_STATUS=$?
         
         if [ $RCLONE_STATUS -eq 0 ]; then
-            echo "✅ 移动成功 (照片已上传) $(date)" | tee -a "$LOG_FILE"
+            echo "✅ 移动成功 (照片已上传至 $DATE_TARGET) $(date)" | tee -a "$LOG_FILE"
         else
             echo "❌ 移动失败 (状态码: $RCLONE_STATUS)。本地照片保留。" | tee -a "$LOG_FILE"
             echo "--- Rclone 错误详情 ---" | tee -a "$LOG_FILE"
@@ -339,36 +361,40 @@ record_loop() {
         # 快速清理残留进程
         termux-microphone-record -q 2>/dev/null
         pkill -9 termux-microphone-record 2>/dev/null
+        sleep 0.5
         
         TIMESTAMP=$(date +%Y-%m-%d_%H-%M-%S)
         FILE="$RECORD_DIR/TermuxAudioRecording_${TIMESTAMP}.m4a"
         
         echo "🎧 开始录音：$FILE" | tee -a "$LOG_FILE"
         
-        # 使用 -l 参数直接限制录音时长（单位：毫秒）
-        # 这样不需要手动发送停止信号，录音会自动停止
-        DURATION_MS=$((AUDIO_DURATION * 1000))
-        termux-microphone-record -e wav -r 16000 -l "$DURATION_MS" -f "$FILE" 2>/dev/null &
+        # 使用 -l 0 启动无限录音，然后通过 -q 控制停止
+        termux-microphone-record -e wav -r 16000 -l 0 -f "$FILE" 2>/dev/null &
         PID=$!
         
         # 等待录音进程启动
-        sleep 1
+        sleep 2
         
         # 检查录音文件是否已创建
         if [ ! -f "$FILE" ]; then
             echo "❌ 录音进程启动失败，未创建文件 $(date)" | tee -a "$LOG_FILE"
-            wait $PID 2>/dev/null
+            kill $PID 2>/dev/null
+            termux-microphone-record -q 2>/dev/null
+            pkill -9 termux-microphone-record 2>/dev/null
             sleep 1
             continue
         fi
         
-        # 等待录音完成（使用 -l 参数后，录音会自动停止）
+        # 等待录音时长
         echo "⏳ 录音中... 持续 ${AUDIO_DURATION} 秒..." | tee -a "$LOG_FILE"
+        sleep "$AUDIO_DURATION"
         
-        # 等待录音进程结束
-        wait $PID 2>/dev/null
+        # 发送 -q 信号停止录音
+        echo "⏹️ 停止录音..." | tee -a "$LOG_FILE"
+        termux-microphone-record -q 2>/dev/null
         
-        # 确保进程已终止
+        # 等待进程结束
+        sleep 1
         pkill -9 termux-microphone-record 2>/dev/null
         
         # 检查录音文件
@@ -379,20 +405,22 @@ record_loop() {
             continue
         fi
         
-        echo "📤 上传录音文件: $(basename "$FILE")" | tee -a "$LOG_FILE"
+        # 按日期文件夹存放
+        CURRENT_DATE=$(date +%Y-%m-%d)
+        DATE_TARGET="$UPLOAD_TARGET/$CURRENT_DATE"
+        echo "📤 上传录音文件: $(basename "$FILE") 至 $DATE_TARGET" | tee -a "$LOG_FILE"
         
         # 后台上传，不阻塞下一次录音
         (
-            rclone_log_output=$(rclone move "$FILE" "$UPLOAD_TARGET" --ignore-errors --retries 3 --low-level-retries 1 --quiet 2>&1)
+            rclone_log_output=$(rclone move "$FILE" "$DATE_TARGET" --ignore-errors --retries 3 --low-level-retries 1 --quiet 2>&1)
             if [ $? -eq 0 ]; then
-                echo "✅ 上传成功: $(basename "$FILE") $(date)" | tee -a "$LOG_FILE"
+                echo "✅ 上传成功: $(basename "$FILE") 至 $DATE_TARGET $(date)" | tee -a "$LOG_FILE"
             else
                 echo "❌ 上传失败: $(basename "$FILE")" | tee -a "$LOG_FILE"
             fi
         ) &
         
-        # 极短暂等待后立即开始下一次录音
-        # 由于上传在后台进行，不会阻塞录音
+        # 短暂等待后立即开始下一次录音
         sleep 0.5
     done
 }
