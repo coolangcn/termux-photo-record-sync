@@ -20,7 +20,7 @@ show_help() {
     echo "================================"
     echo ""
     echo "用法:"
-    echo "  安装并配置:     ./all_in_one.sh install [手机型号]"
+    echo "  安装并配置:     ./all_in_one.sh install [手机型号] [录音时长秒数]"
     echo "  启动服务:       ./all_in_one.sh start"
     echo "  停止服务:       ./all_in_one.sh stop"
     echo "  查看录音日志:   ./all_in_one.sh record-log"
@@ -28,7 +28,7 @@ show_help() {
     echo "  显示帮助:       ./all_in_one.sh help"
     echo ""
     echo "示例:"
-    echo "  ./all_in_one.sh install Sony-1"
+    echo "  ./all_in_one.sh install Sony-1 60"
     echo "  ./all_in_one.sh start"
     echo "  ./all_in_one.sh watchdog"
     echo "  ./all_in_one.sh stop"
@@ -349,6 +349,12 @@ install_script() {
     fi
     echo "✅ 手机型号 ($PHONE_MODEL) 已保存到 $HOME/all_in_one.sh"
     
+    if ! sed -i "s|^AUDIO_DURATION=.*|AUDIO_DURATION=$AUDIO_DURATION|" "$HOME/all_in_one.sh"; then
+        echo "❌ 错误: 无法将录音时长写入 $HOME/all_in_one.sh"
+        exit 1
+    fi
+    echo "✅ 录音时长 (${AUDIO_DURATION}s) 已保存到 $HOME/all_in_one.sh"
+    
     echo "✅ 一体化脚本已安装到 $HOME"
     
     # 设置定时任务以自动启动脚本
@@ -454,6 +460,16 @@ main() {
             if [ -z "$PHONE_MODEL" ]; then
                 echo "❌ 错误: 手机型号不能为空"
                 exit 1
+            fi
+            
+            if [ -z "${3:-}" ]; then
+                echo "⏱️ 请输入录音时长(秒) (直接回车默认使用 60):"
+                read AUDIO_DURATION_INPUT
+                if [ -n "$AUDIO_DURATION_INPUT" ]; then
+                    AUDIO_DURATION="$AUDIO_DURATION_INPUT"
+                fi
+            else
+                AUDIO_DURATION="$3"
             fi
             
             # 安装必要的包
